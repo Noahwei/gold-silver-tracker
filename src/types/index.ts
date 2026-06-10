@@ -4,10 +4,10 @@ export interface MetalPrice {
   price: number
   change: number
   changePercent: number
-  high: number
-  low: number
-  open: number
-  prevClose: number
+  high?: number
+  low?: number
+  open?: number
+  prevClose?: number
   currency: string
   unit: string
 }

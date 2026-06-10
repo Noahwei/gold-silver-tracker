@@ -1,59 +1,78 @@
 import { useState, useMemo } from 'react'
 import { XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Area, AreaChart } from 'recharts'
 import type { KlinePoint } from '@/data/kline'
+import type { MinutePoint } from '@/data/minuteData'
 import { goldKline, silverKline, filterKlineByDays } from '@/data/kline'
 import { BarChart3 } from 'lucide-react'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
+import { mergeLatestDailyPrice, type RealtimePoint } from '@/services/realtimeData'
 
 type Period = 'realtime' | '1m' | '3m'
 
 interface ChartSectionProps {
   goldPriceCny: number
   silverPriceCny: number
+  goldRealtime: RealtimePoint[]
+  silverRealtime: RealtimePoint[]
 }
 
-function formatDate(dateStr: string): string {
-  const d = new Date(dateStr)
-  return `${d.getMonth() + 1}/${d.getDate()}`
+interface ChartTooltipPayload {
+  value: number
 }
 
-function formatFullDate(dateStr: string): string {
-  return dateStr
+interface ChartTooltipProps {
+  active?: boolean
+  payload?: ChartTooltipPayload[]
+  label?: string
 }
 
-function CustomTooltip({ active, payload, label, unit }: any) {
+function CustomTooltip({ active, payload, label }: ChartTooltipProps) {
   if (!active || !payload?.length) return null
   return (
     <div className="rounded-lg border border-gray-700 bg-gray-900/95 px-4 py-3 shadow-xl backdrop-blur-sm">
-      <p className="text-xs text-gray-400 mb-1">{formatFullDate(label)}</p>
+      <p className="text-xs text-gray-400 mb-1">{label}</p>
       <p className="text-sm font-mono font-semibold text-yellow-400">
-        ¥{payload[0].value.toFixed(2)} <span className="text-xs text-gray-400">{unit}</span>
+        ¥{payload[0].value.toFixed(2)} <span className="text-xs text-gray-400">元/克</span>
       </p>
     </div>
   )
 }
 
+function toChartData(data: (KlinePoint | MinutePoint)[]) {
+  return data.map((d) => ({
+    time: 'date' in d ? d.date : d.time,
+    price: d.price,
+  }))
+}
+
 function MetalChart({
   title,
-  data,
-  unit,
+  dailyData,
+  realtimeData,
+  livePrice,
   color,
 }: {
   title: string
-  data: KlinePoint[]
-  unit: string
+  dailyData: KlinePoint[]
+  realtimeData: RealtimePoint[]
+  livePrice: number
   color: string
 }) {
   const [period, setPeriod] = useState<Period>('realtime')
 
-  const chartData = useMemo(() => {
-    if (period === 'realtime') return data.slice(-14) // last ~2 weeks
-    if (period === '1m') return filterKlineByDays(data, 30)
-    if (period === '3m') return data // all data is ~90 days
-    return data
-  }, [period, data])
+  const liveDailyData = useMemo(
+    () => mergeLatestDailyPrice(dailyData, livePrice, new Date()),
+    [dailyData, livePrice],
+  )
 
-  const sortedData = useMemo(() => [...chartData].sort((a, b) => a.date.localeCompare(b.date)), [chartData])
+  const chartData = useMemo(() => {
+    if (period === 'realtime') return toChartData(realtimeData)
+    if (period === '1m') return toChartData(filterKlineByDays(liveDailyData, 30))
+    if (period === '3m') return toChartData(liveDailyData)
+    return toChartData(realtimeData)
+  }, [period, liveDailyData, realtimeData])
+
+  const sortedData = useMemo(() => [...chartData], [chartData])
 
   const tabs: { key: Period; label: string }[] = [
     { key: 'realtime', label: '实时' },
@@ -61,16 +80,17 @@ function MetalChart({
     { key: '3m', label: '近三月' },
   ]
 
-  const currentPrice = data[0]?.price ?? 0
+  const currentPrice = sortedData[sortedData.length - 1]?.price ?? 0
   const firstPrice = sortedData[0]?.price ?? currentPrice
   const change = currentPrice - firstPrice
   const changePercent = firstPrice ? ((change / firstPrice) * 100) : 0
   const isUp = change >= 0
 
-  // Calculate min/max for Y axis with some padding
   const prices = sortedData.map((d) => d.price)
-  const yMin = Math.min(...prices) * 0.95
-  const yMax = Math.max(...prices) * 1.05
+  const minPrice = prices.length ? Math.min(...prices) : livePrice
+  const maxPrice = prices.length ? Math.max(...prices) : livePrice
+  const yMin = minPrice * 0.995
+  const yMax = maxPrice * 1.005
 
   return (
     <Card className="border-gray-800 bg-gray-900/60">
@@ -87,7 +107,6 @@ function MetalChart({
               </span>
             </div>
           </div>
-          {/* Period tabs */}
           <div className="flex gap-1 rounded-lg bg-gray-800/50 p-1">
             {tabs.map((tab) => (
               <button
@@ -116,8 +135,7 @@ function MetalChart({
             </defs>
             <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" vertical={false} />
             <XAxis
-              dataKey="date"
-              tickFormatter={formatDate}
+              dataKey="time"
               stroke="#4b5563"
               fontSize={11}
               tickLine={false}
@@ -130,10 +148,10 @@ function MetalChart({
               fontSize={11}
               tickLine={false}
               axisLine={false}
-              tickFormatter={(v) => v.toFixed(1)}
+              tickFormatter={(v) => v.toFixed(0)}
               width={50}
             />
-            <Tooltip content={<CustomTooltip unit={unit} />} />
+            <Tooltip content={<CustomTooltip />} />
             <Area
               type="monotone"
               dataKey="price"
@@ -150,7 +168,12 @@ function MetalChart({
   )
 }
 
-export function ChartSection({ goldPriceCny, silverPriceCny }: ChartSectionProps) {
+export function ChartSection({
+  goldPriceCny,
+  silverPriceCny,
+  goldRealtime,
+  silverRealtime,
+}: ChartSectionProps) {
   return (
     <section>
       <div className="mb-4 flex items-center gap-2">
@@ -162,14 +185,16 @@ export function ChartSection({ goldPriceCny, silverPriceCny }: ChartSectionProps
       <div className="grid gap-6 md:grid-cols-2">
         <MetalChart
           title="国内金价走势"
-          data={goldKline}
-          unit="元/克"
+          dailyData={goldKline}
+          realtimeData={goldRealtime}
+          livePrice={goldPriceCny}
           color="#f59e0b"
         />
         <MetalChart
           title="国内银价走势"
-          data={silverKline}
-          unit="元/克"
+          dailyData={silverKline}
+          realtimeData={silverRealtime}
+          livePrice={silverPriceCny}
           color="#9ca3af"
         />
       </div>

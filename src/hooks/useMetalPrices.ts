@@ -1,132 +1,101 @@
-import { useState, useEffect } from 'react'
-import type { MetalPrice, ExchangeRate } from '@/types'
+import { useState, useEffect, useCallback, useRef } from 'react'
+import type { MetalPrice } from '@/types'
+import { fetchAllPrices, type AllPrices, usdOzToCnyGram } from '@/services/api'
+import { appendRealtimePoint, type RealtimePoint } from '@/services/realtimeData'
+import { buildLiveMetalPrice } from '@/services/metalPrice'
+import { goldMinute, silverMinute } from '@/data/minuteData'
 
-// 实时数据 — 2026-06-10 09:16 CST; 国内优先
-const GOLD_DATA: MetalPrice[] = [
-  {
-    symbol: 'AU9999',
-    name: '上海金 (AU9999)',
-    price: 917.00,
-    change: -27.98,
-    changePercent: -2.96,
-    high: 950.00,
-    low: 913.00,
-    open: 945.00,
-    prevClose: 944.98,
-    currency: 'CNY',
-    unit: '元/克',
-  },
-  {
-    symbol: 'GC',
-    name: 'COMEX 黄金期货',
-    price: 4220.40,
-    change: -66.00,
-    changePercent: -1.54,
-    high: 4281.10,
-    low: 4210.70,
-    open: 4276.10,
-    prevClose: 4286.40,
-    currency: 'USD',
-    unit: '美元/盎司',
-  },
-  {
-    symbol: 'XAU/USD',
-    name: '国际现货黄金 (伦敦金)',
-    price: 4204.03,
-    change: -56.58,
-    changePercent: -1.33,
-    high: 4257.49,
-    low: 4186.74,
-    open: 4253.00,
-    prevClose: 4260.61,
-    currency: 'USD',
-    unit: '美元/盎司',
-  },
-]
-
-const SILVER_DATA: MetalPrice[] = [
-  {
-    symbol: 'AG(T+D)',
-    name: '上海白银 (Ag T+D)',
-    price: 13.98,
-    change: -0.35,
-    changePercent: -2.44,
-    high: 14.35,
-    low: 13.82,
-    open: 14.22,
-    prevClose: 14.33,
-    currency: 'CNY',
-    unit: '元/克',
-  },
-  {
-    symbol: 'SI',
-    name: 'COMEX 白银期货',
-    price: 64.205,
-    change: -1.035,
-    changePercent: -1.59,
-    high: 65.480,
-    low: 63.900,
-    open: 65.200,
-    prevClose: 65.240,
-    currency: 'USD',
-    unit: '美元/盎司',
-  },
-  {
-    symbol: 'XAG/USD',
-    name: '国际现货白银',
-    price: 63.08,
-    change: -1.02,
-    changePercent: -1.59,
-    high: 64.50,
-    low: 62.85,
-    open: 64.10,
-    prevClose: 64.10,
-    currency: 'USD',
-    unit: '美元/盎司',
-  },
-]
-
-const EXCHANGE_RATES: ExchangeRate[] = [
-  {
-    pair: 'USD/CNY',
-    rate: 6.7825,
-    change: 0,
-    changePercent: 0,
-  },
-]
+const OZ_TO_GRAM = 31.1035
+const REFRESH_INTERVAL = 60_000 // 1分钟刷新
+const REALTIME_WINDOW = 120
 
 export function useMetalPrices() {
-  const [goldData] = useState<MetalPrice[]>(GOLD_DATA)
-  const [silverData] = useState<MetalPrice[]>(SILVER_DATA)
-  const [rates] = useState<ExchangeRate[]>(EXCHANGE_RATES)
+  const [livePrices, setLivePrices] = useState<AllPrices | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
   const [lastUpdate, setLastUpdate] = useState<string>('')
+  const [sourceUpdatedAt, setSourceUpdatedAt] = useState<string>('')
+  const [goldRealtime, setGoldRealtime] = useState<RealtimePoint[]>(goldMinute)
+  const [silverRealtime, setSilverRealtime] = useState<RealtimePoint[]>(silverMinute)
+  const livePricesRef = useRef<AllPrices | null>(null)
+  const prevPricesRef = useRef<AllPrices | null>(null)
 
-  useEffect(() => {
-    const now = new Date()
-    setLastUpdate(
-      now.toLocaleString('zh-CN', {
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
-      })
-    )
+  const fetchPrices = useCallback(async () => {
+    setRefreshing(true)
+    try {
+      const data = await fetchAllPrices()
+      prevPricesRef.current = livePricesRef.current
+      livePricesRef.current = data
+      setLivePrices(data)
+      setError(null)
+      const sourceDate = new Date(data.updatedAt)
+      setSourceUpdatedAt(sourceDate.toLocaleString('zh-CN', {
+        year: 'numeric', month: '2-digit', day: '2-digit',
+        hour: '2-digit', minute: '2-digit', second: '2-digit',
+      }))
+      const now = new Date()
+      setLastUpdate(now.toLocaleString('zh-CN', {
+        year: 'numeric', month: '2-digit', day: '2-digit',
+        hour: '2-digit', minute: '2-digit', second: '2-digit',
+      }))
+      setGoldRealtime((points) => appendRealtimePoint(points, data.goldCny, sourceDate, REALTIME_WINDOW))
+      setSilverRealtime((points) => appendRealtimePoint(points, data.silverCny, sourceDate, REALTIME_WINDOW))
+    } catch (e) {
+      setError((e as Error).message)
+      console.warn('Live price fetch failed, using fallback:', e)
+    } finally {
+      setLoading(false)
+      setRefreshing(false)
+    }
   }, [])
 
-  const usdCnyRate = rates.find((r) => r.pair === 'USD/CNY')?.rate ?? 6.7825
+  useEffect(() => {
+    fetchPrices()
+    const timer = setInterval(fetchPrices, REFRESH_INTERVAL)
+    return () => clearInterval(timer)
+  }, [fetchPrices])
 
-  const convertOzToGram = (pricePerOz: number, rate: number) => {
-    return (pricePerOz * rate) / 31.1035
-  }
+  // 计算实时价格数据
+  const usdCny = livePrices?.usdCny ?? 6.7825
+  const prev = prevPricesRef.current
+
+  const goldCnyGram = livePrices?.goldCny ?? usdOzToCnyGram(4204.03, usdCny)
+  const silverCnyGram = livePrices?.silverCny ?? usdOzToCnyGram(63.08, usdCny)
+  const goldUsd = livePrices?.goldUsd ?? 4204.03
+  const silverUsd = livePrices?.silverUsd ?? 63.08
+
+  const prevGoldUsd = prev?.goldUsd ?? goldUsd
+  const prevSilverUsd = prev?.silverUsd ?? silverUsd
+  const prevGoldCny = prev?.goldCny ?? goldCnyGram
+  const prevSilverCny = prev?.silverCny ?? silverCnyGram
+
+  // 国内优先排序
+  const goldData: MetalPrice[] = [
+    buildLiveMetalPrice({ symbol: 'AU9999', name: '上海金 (AU9999)', price: goldCnyGram, previousPrice: prevGoldCny, currency: 'CNY', unit: '元/克' }),
+    buildLiveMetalPrice({ symbol: 'GC', name: 'COMEX 黄金期货', price: goldUsd, previousPrice: prevGoldUsd, currency: 'USD', unit: '美元/盎司' }),
+    buildLiveMetalPrice({ symbol: 'XAU/USD', name: '国际现货黄金 (伦敦金)', price: goldUsd, previousPrice: prevGoldUsd, currency: 'USD', unit: '美元/盎司' }),
+  ]
+
+  const silverData: MetalPrice[] = [
+    buildLiveMetalPrice({ symbol: 'AG(T+D)', name: '上海白银 (Ag T+D)', price: silverCnyGram, previousPrice: prevSilverCny, currency: 'CNY', unit: '元/克' }),
+    buildLiveMetalPrice({ symbol: 'SI', name: 'COMEX 白银期货', price: silverUsd, previousPrice: prevSilverUsd, currency: 'USD', unit: '美元/盎司' }),
+    buildLiveMetalPrice({ symbol: 'XAG/USD', name: '国际现货白银', price: silverUsd, previousPrice: prevSilverUsd, currency: 'USD', unit: '美元/盎司' }),
+  ]
 
   return {
     goldData,
     silverData,
-    rates,
     lastUpdate,
-    usdCnyRate,
-    convertOzToGram,
+    sourceUpdatedAt,
+    usdCny,
+    loading,
+    refreshing,
+    error,
+    live: !!livePrices,
+    goldRealtime,
+    silverRealtime,
+    refreshPrices: fetchPrices,
+    convertOzToGram: (pricePerOz: number) => (pricePerOz * usdCny) / OZ_TO_GRAM,
   }
 }

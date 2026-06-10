@@ -3,10 +3,19 @@ import { HeroSection } from '@/sections/HeroSection'
 import { PriceCardsSection } from '@/sections/PriceCardsSection'
 import { ConverterSection } from '@/sections/ConverterSection'
 import { ChartSection } from '@/sections/ChartSection'
-import { RefreshCw } from 'lucide-react'
 
 function App() {
-  const { goldData, silverData, lastUpdate, usdCnyRate } = useMetalPrices()
+  const {
+    goldData,
+    silverData,
+    lastUpdate,
+    sourceUpdatedAt,
+    usdCny,
+    refreshing,
+    goldRealtime,
+    silverRealtime,
+    refreshPrices,
+  } = useMetalPrices()
 
   const londonGold = goldData.find((g) => g.symbol === 'XAU/USD')!
   const comexSilver = silverData.find((s) => s.symbol === 'SI')!
@@ -14,22 +23,30 @@ function App() {
   const shSilver = silverData.find((s) => s.symbol === 'AG(T+D)')!
 
   const handleRefresh = () => {
-    window.location.reload()
+    void refreshPrices()
   }
 
   return (
     <div className="min-h-screen bg-black text-gray-100">
       <div className="mx-auto max-w-6xl px-4 py-6 md:py-10">
-        {/* Hero Section */}
+        {/* Hero Section — 国内价格默认置顶 */}
         <HeroSection
-          goldPrice={londonGold.price}
-          goldChange={londonGold.change}
-          goldChangePercent={londonGold.changePercent}
-          silverPrice={comexSilver.price}
-          silverChange={comexSilver.change}
-          silverChangePercent={comexSilver.changePercent}
+          goldPriceCny={shGold.price}
+          goldChangeCny={shGold.change}
+          goldChangePercentCny={shGold.changePercent}
+          silverPriceCny={shSilver.price}
+          silverChangeCny={shSilver.change}
+          silverChangePercentCny={shSilver.changePercent}
+          goldPriceUsd={londonGold.price}
+          goldChangeUsd={londonGold.change}
+          goldChangePercentUsd={londonGold.changePercent}
+          silverPriceUsd={comexSilver.price}
+          silverChangeUsd={comexSilver.change}
+          silverChangePercentUsd={comexSilver.changePercent}
           lastUpdate={lastUpdate}
-          usdCnyRate={usdCnyRate}
+          usdCnyRate={usdCny}
+          refreshing={refreshing}
+          onRefresh={handleRefresh}
         />
 
         {/* 走势图表 */}
@@ -37,20 +54,13 @@ function App() {
           <ChartSection
             goldPriceCny={shGold.price}
             silverPriceCny={shSilver.price}
+            goldRealtime={goldRealtime}
+            silverRealtime={silverRealtime}
           />
         </div>
 
-        {/* Divider */}
-        <div className="my-10 flex items-center gap-4">
-          <div className="h-px flex-1 bg-gradient-to-r from-transparent via-gray-800 to-transparent" />
-          <button
-            onClick={handleRefresh}
-            className="flex items-center gap-2 rounded-full border border-gray-700 bg-gray-900 px-4 py-1.5 text-xs text-gray-400 transition-all hover:border-gray-600 hover:text-gray-200"
-          >
-            <RefreshCw className="h-3.5 w-3.5" />
-            刷新数据
-          </button>
-          <div className="h-px flex-1 bg-gradient-to-r from-transparent via-gray-800 to-transparent" />
+        <div className="my-10">
+          <div className="h-px bg-gradient-to-r from-transparent via-gray-800 to-transparent" />
         </div>
 
         {/* Price Cards */}
@@ -63,7 +73,7 @@ function App() {
           <ConverterSection
             goldPricePerOz={londonGold.price}
             silverPricePerOz={comexSilver.price}
-            usdCnyRate={usdCnyRate}
+            usdCnyRate={usdCny}
             goldPriceCnyPerGram={shGold.price}
             silverPriceCnyPerGram={shSilver.price}
           />
@@ -72,10 +82,10 @@ function App() {
         {/* Footer */}
         <footer className="mt-16 border-t border-gray-800 pt-6 text-center">
           <p className="text-xs text-gray-600">
-            数据来源：COMEX / 伦敦金 / 上海黄金交易所 | 走势图数据来自华安黄金ETF(518880) / 国投白银LOF(161226) | 仅供参考，不构成投资建议
+            数据来源：Gold API 实时现货金银价 / USD-CNY 汇率 | 最新源时间：{sourceUpdatedAt || lastUpdate || '加载中'} | 仅供参考，不构成投资建议
           </p>
           <p className="mt-1 text-xs text-gray-700">
-            &copy; 2026 实时金银价格追踪 | Powered by WorkBuddy
+            &copy; 2026 实时金银价格追踪
           </p>
         </footer>
       </div>

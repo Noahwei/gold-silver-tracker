@@ -52,10 +52,6 @@ function MetalCard({ metal, variant }: { metal: MetalPrice; variant: 'gold' | 's
           </div>
         </div>
         <div className="space-y-0.5 border-t border-gray-800 pt-3">
-          <DetailRow label="今开" value={formatPrice(metal.open, metal.currency)} />
-          <DetailRow label="最高" value={formatPrice(metal.high, metal.currency)} />
-          <DetailRow label="最低" value={formatPrice(metal.low, metal.currency)} />
-          <DetailRow label="昨收" value={formatPrice(metal.prevClose, metal.currency)} />
           <DetailRow label="单位" value={metal.unit} />
         </div>
       </CardContent>
