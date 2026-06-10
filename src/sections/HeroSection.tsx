@@ -93,17 +93,18 @@ export function HeroSection({
             </h1>
             <p className="mt-1 text-sm text-gray-400">国内 & 国际贵金属实时行情</p>
           </div>
-          <div className="flex items-center gap-4">
-            <div className="rounded-lg border border-gray-700 bg-gray-800/50 px-3 py-1.5 text-xs text-gray-400">
+          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center sm:gap-4">
+            <div className="w-full rounded-lg border border-gray-700 bg-gray-800/50 px-3 py-1.5 text-xs text-gray-400 sm:w-auto">
               USD/CNY <span className="font-mono font-semibold text-gray-200">{usdCnyRate.toFixed(4)}</span>
             </div>
-            <div className="flex items-center gap-2 rounded-lg border border-gray-700 bg-gray-800/50 px-3 py-1.5 text-xs text-gray-400">
-              更新于 <span className="font-mono text-gray-200">{lastUpdate}</span>
+            <div className="flex w-full items-center gap-2 rounded-lg border border-gray-700 bg-gray-800/50 px-3 py-1.5 text-xs text-gray-400 sm:w-auto">
+              <span className="shrink-0">更新于</span>
+              <span className="min-w-0 flex-1 break-words font-mono text-gray-200 sm:flex-none sm:whitespace-nowrap">{lastUpdate || '加载中'}</span>
               <button
                 type="button"
                 onClick={onRefresh}
                 disabled={refreshing}
-                className="ml-1 inline-flex h-6 items-center gap-1 rounded-md border border-gray-700 bg-gray-900 px-2 text-xs text-gray-400 transition-all hover:border-gray-600 hover:text-gray-200 disabled:cursor-not-allowed disabled:opacity-60"
+                className="ml-auto inline-flex h-7 shrink-0 items-center gap-1 rounded-md border border-gray-700 bg-gray-900 px-2.5 text-xs text-gray-400 transition-all hover:border-gray-600 hover:text-gray-200 disabled:cursor-not-allowed disabled:opacity-60 sm:ml-1 sm:h-6 sm:px-2"
                 aria-label={refreshing ? '刷新中' : '刷新数据'}
               >
                 <RefreshCw className={`h-3 w-3 ${refreshing ? 'animate-spin' : ''}`} />
