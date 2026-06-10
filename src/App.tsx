@@ -2,6 +2,7 @@ import { useMetalPrices } from '@/hooks/useMetalPrices'
 import { HeroSection } from '@/sections/HeroSection'
 import { PriceCardsSection } from '@/sections/PriceCardsSection'
 import { ConverterSection } from '@/sections/ConverterSection'
+import { ChartSection } from '@/sections/ChartSection'
 import { RefreshCw } from 'lucide-react'
 
 function App() {
@@ -30,6 +31,14 @@ function App() {
           lastUpdate={lastUpdate}
           usdCnyRate={usdCnyRate}
         />
+
+        {/* 走势图表 */}
+        <div className="my-10">
+          <ChartSection
+            goldPriceCny={shGold.price}
+            silverPriceCny={shSilver.price}
+          />
+        </div>
 
         {/* Divider */}
         <div className="my-10 flex items-center gap-4">
@@ -63,7 +72,7 @@ function App() {
         {/* Footer */}
         <footer className="mt-16 border-t border-gray-800 pt-6 text-center">
           <p className="text-xs text-gray-600">
-            数据来源：COMEX / 伦敦金 / 上海黄金交易所 | 数据仅供参考，不构成投资建议
+            数据来源：COMEX / 伦敦金 / 上海黄金交易所 | 走势图数据来自华安黄金ETF(518880) / 国投白银LOF(161226) | 仅供参考，不构成投资建议
           </p>
           <p className="mt-1 text-xs text-gray-700">
             &copy; 2026 实时金银价格追踪 | Powered by WorkBuddy

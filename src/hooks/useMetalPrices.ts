@@ -1,20 +1,20 @@
 import { useState, useEffect } from 'react'
 import type { MetalPrice, ExchangeRate } from '@/types'
 
-// 实时数据 — 2026-06-10 09:16 CST
+// 实时数据 — 2026-06-10 09:16 CST; 国内优先
 const GOLD_DATA: MetalPrice[] = [
   {
-    symbol: 'XAU/USD',
-    name: '国际现货黄金 (伦敦金)',
-    price: 4204.03,
-    change: -56.58,
-    changePercent: -1.33,
-    high: 4257.49,
-    low: 4186.74,
-    open: 4253.00,
-    prevClose: 4260.61,
-    currency: 'USD',
-    unit: '美元/盎司',
+    symbol: 'AU9999',
+    name: '上海金 (AU9999)',
+    price: 917.00,
+    change: -27.98,
+    changePercent: -2.96,
+    high: 950.00,
+    low: 913.00,
+    open: 945.00,
+    prevClose: 944.98,
+    currency: 'CNY',
+    unit: '元/克',
   },
   {
     symbol: 'GC',
@@ -30,21 +30,34 @@ const GOLD_DATA: MetalPrice[] = [
     unit: '美元/盎司',
   },
   {
-    symbol: 'AU9999',
-    name: '上海金 (AU9999)',
-    price: 917.00,
-    change: -27.98,
-    changePercent: -2.96,
-    high: 950.00,
-    low: 913.00,
-    open: 945.00,
-    prevClose: 944.98,
-    currency: 'CNY',
-    unit: '元/克',
+    symbol: 'XAU/USD',
+    name: '国际现货黄金 (伦敦金)',
+    price: 4204.03,
+    change: -56.58,
+    changePercent: -1.33,
+    high: 4257.49,
+    low: 4186.74,
+    open: 4253.00,
+    prevClose: 4260.61,
+    currency: 'USD',
+    unit: '美元/盎司',
   },
 ]
 
 const SILVER_DATA: MetalPrice[] = [
+  {
+    symbol: 'AG(T+D)',
+    name: '上海白银 (Ag T+D)',
+    price: 13.98,
+    change: -0.35,
+    changePercent: -2.44,
+    high: 14.35,
+    low: 13.82,
+    open: 14.22,
+    prevClose: 14.33,
+    currency: 'CNY',
+    unit: '元/克',
+  },
   {
     symbol: 'SI',
     name: 'COMEX 白银期货',
@@ -70,19 +83,6 @@ const SILVER_DATA: MetalPrice[] = [
     prevClose: 64.10,
     currency: 'USD',
     unit: '美元/盎司',
-  },
-  {
-    symbol: 'AG(T+D)',
-    name: '上海白银 (Ag T+D)',
-    price: 13.98,
-    change: -0.35,
-    changePercent: -2.44,
-    high: 14.35,
-    low: 13.82,
-    open: 14.22,
-    prevClose: 14.33,
-    currency: 'CNY',
-    unit: '元/克',
   },
 ]
 
